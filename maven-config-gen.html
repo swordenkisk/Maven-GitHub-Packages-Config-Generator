@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maven × GitHub Packages — Config Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Barlow+Condensed:wght@300;400;500;600;700;800&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   DESIGN SYSTEM — Industrial Blueprint
+═══════════════════════════════════════════════ */
+:root {
+  --bg:         #0d0e0f;
+  --bg2:        #111214;
+  --bg3:        #161719;
+  --panel:      #131416;
+  --border:     #222426;
+  --border2:    #2a2c30;
+  --amber:      #e8a020;
+  --amber-d:    #c47a10;
+  --amber-l:    #f5c060;
+  --amber-glow: rgba(232, 160, 32, 0.15);
+  --amber-line: rgba(232, 160, 32, 0.08);
+  --green:      #3de87a;
+  --red:        #e85050;
+  --blue:       #4aadff;
+  --text:       #d8d9dc;
+  --text2:      #7a7d85;
+  --text3:      #44464d;
+  --code:       #e0d5a8;
+  --tag:        #8bc8ff;
+  --attr:       #f5c060;
+  --val:        #a0e870;
+  --comment:    #555e44;
+
+  --font-mono:    'IBM Plex Mono', monospace;
+  --font-display: 'Barlow Condensed', sans-serif;
+  --font-body:    'Barlow', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Blueprint grid background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--amber-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--amber-line) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Large grid overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(232,160,32,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232,160,32,0.04) 1px, transparent 1px);
+  background-size: 200px 200px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── LAYOUT ─────────────────────────────────── */
+.app {
+  position: relative;
+  z-index: 1;
+  max-width: 1380px;
+  margin: 0 auto;
+  padding: 0 24px 60px;
+}
+
+/* ─── HEADER ─────────────────────────────────── */
+.header {
+  padding: 40px 0 32px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 40px;
+  position: relative;
+}
+
+.header-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 12px;
+}
+
+.header-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(232,160,32,0.1);
+  border: 1px solid rgba(232,160,32,0.3);
+  padding: 4px 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--amber);
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-top: 8px;
+}
+
+.header-badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 8px var(--amber);
+  animation: pulse 2s ease infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-size: clamp(36px, 5vw, 64px);
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1;
+  color: var(--text);
+}
+
+h1 span { color: var(--amber); }
+
+.header-sub {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--text2);
+  max-width: 600px;
+  margin-top: 10px;
+}
+
+.header-dec {
+  position: absolute;
+  right: 0; top: 40px;
+  width: 180px; height: 80px;
+  opacity: 0.06;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+.header-dec span {
+  display: block;
+  height: 2px;
+  background: var(--amber);
+  border-radius: 1px;
+}
+
+/* ─── STEPS TRACK ────────────────────────────── */
+.steps-track {
+  display: flex;
+  gap: 0;
+  margin-bottom: 36px;
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.step-indicator {
+  flex: 1;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel);
+  border-right: 1px solid var(--border2);
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+.step-indicator:last-child { border-right: none; }
+
+.step-indicator:hover { background: var(--bg3); }
+
+.step-indicator.active {
+  background: rgba(232,160,32,0.07);
+  border-bottom: 2px solid var(--amber);
+  padding-bottom: 10px;
+}
+
+.step-num {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--border2);
+  border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text3);
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.step-indicator.active .step-num {
+  background: var(--amber);
+  border-color: var(--amber);
+  color: #000;
+  box-shadow: 0 0 12px rgba(232,160,32,0.4);
+}
+
+.step-indicator.done .step-num {
+  background: rgba(61,232,122,0.15);
+  border-color: var(--green);
+  color: var(--green);
+}
+.step-indicator.done .step-num::before { content: '✓'; }
+
+.step-label {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+
+.step-indicator.active .step-label { color: var(--amber); }
+.step-indicator.done .step-label { color: var(--text); }
+
+/* ─── MAIN GRID ──────────────────────────────── */
+.main-grid {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1000px) {
+  .main-grid { grid-template-columns: 1fr; }
+}
+
+/* ─── FORM PANEL ─────────────────────────────── */
+.form-panel {
+  position: sticky;
+  top: 24px;
+}
+
+.panel-box {
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-head-icon {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+  flex-shrink: 0;
+}
+
+.panel-head-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.panel-body { padding: 18px; }
+
+.form-group { margin-bottom: 16px; }
+.form-group:last-child { margin-bottom: 0; }
+
+label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text2);
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+label .req { color: var(--amber); }
+label .tip {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--text3);
+  font-style: italic;
+  font-weight: 300;
+}
+
+input[type=text], input[type=password], select, textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 9px 12px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  caret-color: var(--amber);
+}
+
+input[type=text]:focus, input[type=password]:focus,
+select:focus, textarea:focus {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px rgba(232,160,32,0.1);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text3);
+  font-style: italic;
+}
+
+select {
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%237a7d85' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  color: var(--text);
+}
+
+select option {
+  background: var(--bg2);
+  color: var(--text);
+}
+
+textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
+
+/* Input validation states */
+input.valid { border-color: rgba(61,232,122,0.4); }
+input.invalid { border-color: rgba(232,80,80,0.5); }
+
+.validation-msg {
+  margin-top: 4px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  display: none;
+}
+.validation-msg.show { display: block; }
+.validation-msg.ok { color: var(--green); }
+.validation-msg.err { color: var(--red); }
+
+/* Toggle row */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.toggle-row:first-child { border-top: none; }
+
+.toggle-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text2);
+}
+
+.toggle {
+  position: relative;
+  width: 36px; height: 20px;
+  flex-shrink: 0;
+}
+.toggle input { display: none; }
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--border2);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 16px; height: 16px;
+  background: var(--text3);
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+.toggle input:checked + .toggle-slider { background: rgba(232,160,32,0.25); }
+.toggle input:checked + .toggle-slider::after {
+  transform: translateX(16px);
+  background: var(--amber);
+  box-shadow: 0 0 6px rgba(232,160,32,0.5);
+}
+
+/* Checkbox styled */
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+.checkbox-item:hover { border-color: var(--border2); }
+.checkbox-item.checked {
+  border-color: rgba(232,160,32,0.35);
+  background: rgba(232,160,32,0.04);
+}
+.checkbox-item input { display: none; }
+.checkmark {
+  width: 16px; height: 16px;
+  border: 1.5px solid var(--border2);
+  border-radius: 2px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.checkbox-item.checked .checkmark {
+  background: var(--amber);
+  border-color: var(--amber);
+}
+.checkbox-item.checked .checkmark::after {
+  content: '✓';
+  font-size: 10px;
+  font-weight: 700;
+  color: #000;
+}
+.checkbox-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text2);
+}
+.checkbox-item.checked .checkbox-text { color: var(--text); }
+
+/* ─── OUTPUT PANEL ───────────────────────────── */
+.output-col { display: flex; flex-direction: column; gap: 20px; }
+
+.output-card {
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.output-header {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+}
+
+.file-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-right: 1px solid var(--border);
+  background: var(--bg3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text2);
+  position: relative;
+}
+
+.file-tab.active {
+  background: var(--panel);
+  color: var(--amber);
+  border-bottom: 2px solid var(--amber);
+  padding-bottom: 8px;
+}
+
+.file-tab::before {
+  content: '';
+  width: 8px; height: 8px;
+  border-radius: 1px;
+  margin-right: 2px;
+}
+
+.file-tab.xml::before { background: #e86060; }
+.file-tab.sh::before { background: var(--green); }
+
+.output-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.action-btn:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: var(--amber-glow);
+}
+
+.action-btn.success {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.action-btn svg { width: 12px; height: 12px; }
+
+/* Code block */
+.code-wrap {
+  position: relative;
+  overflow: hidden;
+}
+
+.code-block {
+  padding: 20px 24px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: var(--code);
+  overflow-x: auto;
+  white-space: pre;
+  tab-size: 2;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.code-block::-webkit-scrollbar { width: 4px; height: 4px; }
+.code-block::-webkit-scrollbar-track { background: transparent; }
+.code-block::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* XML Syntax */
+.xml-tag { color: var(--tag); }
+.xml-attr { color: var(--attr); }
+.xml-val { color: var(--val); }
+.xml-comment { color: var(--comment); font-style: italic; }
+.xml-text { color: var(--code); }
+.xml-highlight { color: var(--amber); font-weight: 600; }
+.xml-placeholder {
+  color: var(--amber);
+  background: rgba(232,160,32,0.1);
+  border-radius: 2px;
+  padding: 0 2px;
+  font-style: italic;
+}
+
+/* Line numbers */
+.with-lines {
+  display: grid;
+  grid-template-columns: auto 1fr;
+}
+
+.line-nums {
+  padding: 20px 16px 20px 20px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: var(--text3);
+  text-align: right;
+  user-select: none;
+  border-right: 1px solid var(--border);
+  background: rgba(0,0,0,0.2);
+  min-width: 44px;
+}
+
+/* ─── INFO CARD ──────────────────────────────── */
+.info-card {
+  display: flex;
+  gap: 12px;
+  padding: 14px 18px;
+  background: rgba(232,160,32,0.05);
+  border: 1px solid rgba(232,160,32,0.2);
+  border-radius: 3px;
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.5;
+}
+.info-card-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+.warn-card {
+  display: flex;
+  gap: 12px;
+  padding: 14px 18px;
+  background: rgba(232,80,80,0.05);
+  border: 1px solid rgba(232,80,80,0.2);
+  border-radius: 3px;
+  font-size: 13px;
+  color: #c87070;
+  line-height: 1.5;
+}
+
+/* ─── SECTION HEADING ────────────────────────── */
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.section-heading h2 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.section-heading .sh-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--border2), transparent);
+}
+
+.section-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--amber);
+  letter-spacing: 1px;
+}
+
+/* ─── REPO LIST ──────────────────────────────── */
+.repo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.repo-entry {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: end;
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+.repo-entry .btn-icon {
+  padding: 9px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  color: var(--red);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center;
+  height: 36px; width: 36px;
+}
+.repo-entry .btn-icon:hover { background: rgba(232,80,80,0.1); border-color: var(--red); }
+
+.add-repo-btn {
+  width: 100%;
+  padding: 9px;
+  background: transparent;
+  border: 1px dashed var(--border2);
+  border-radius: 3px;
+  color: var(--text3);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.add-repo-btn:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: var(--amber-glow);
+}
+
+/* ─── BOTTOM ACTIONS ─────────────────────────── */
+.bottom-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px;
+  background: var(--bg3);
+  border-top: 1px solid var(--border);
+}
+
+.btn-primary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--amber);
+  color: #000;
+  border: none;
+  border-radius: 3px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-primary:hover {
+  background: var(--amber-l);
+  box-shadow: 0 0 20px rgba(232,160,32,0.3);
+}
+
+.btn-secondary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: transparent;
+  color: var(--text2);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-secondary:hover { border-color: var(--text2); color: var(--text); }
+
+/* Status indicator */
+.status-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.status-dot::before {
+  content: '';
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: pulse 2s ease infinite;
+}
+
+/* ─── OUTPUT METADATA BAR ────────────────────── */
+.meta-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 18px;
+  background: rgba(0,0,0,0.3);
+  border-top: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text3);
+}
+.meta-bar span { display: flex; align-items: center; gap: 5px; }
+.meta-badge {
+  padding: 1px 6px;
+  background: var(--border);
+  border-radius: 2px;
+  color: var(--text2);
+  font-size: 10px;
+}
+
+/* ─── CHEATSHEET ─────────────────────────────── */
+.cheat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 18px;
+}
+
+.cheat-item {
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  transition: border-color 0.15s;
+}
+.cheat-item:hover { border-color: var(--border2); }
+
+.cheat-cmd {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--green);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cheat-cmd::before {
+  content: '$';
+  color: var(--text3);
+}
+
+.cheat-desc {
+  font-size: 11px;
+  color: var(--text2);
+  line-height: 1.4;
+}
+
+/* ─── ANIMATIONS ─────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.output-card {
+  animation: fadeUp 0.25s ease forwards;
+}
+
+.flash {
+  animation: flashAnim 0.4s ease;
+}
+
+@keyframes flashAnim {
+  0%, 100% { background: var(--panel); }
+  50% { background: rgba(232,160,32,0.08); }
+}
+
+/* ─── RESPONSIVE ─────────────────────────────── */
+@media (max-width: 680px) {
+  .steps-track { flex-wrap: wrap; }
+  .step-label { display: none; }
+  .cheat-grid { grid-template-columns: 1fr; }
+  .main-grid { padding: 0; }
+  .form-panel { position: static; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── HEADER ─────────────────────────────── -->
+  <header class="header">
+    <div class="header-dec">
+      <span style="width:180px"></span>
+      <span style="width:120px"></span>
+      <span style="width:160px"></span>
+      <span style="width:80px"></span>
+      <span style="width:140px"></span>
+    </div>
+    <div class="header-top">
+      <div>
+        <div class="header-badge">Config Generator</div>
+        <h1>Maven <span>×</span> GitHub Packages</h1>
+        <p class="header-sub">Generate all the XML configuration you need to authenticate, publish, and install packages with GitHub Packages — zero copy-paste guesswork.</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── STEP TRACK ─────────────────────────── -->
+  <div class="steps-track">
+    <div class="step-indicator active" data-step="0">
+      <div class="step-num">1</div>
+      <span class="step-label">Credentials</span>
+    </div>
+    <div class="step-indicator" data-step="1">
+      <div class="step-num">2</div>
+      <span class="step-label">Repository</span>
+    </div>
+    <div class="step-indicator" data-step="2">
+      <div class="step-num">3</div>
+      <span class="step-label">Package</span>
+    </div>
+    <div class="step-indicator" data-step="3">
+      <div class="step-num">4</div>
+      <span class="step-label">Options</span>
+    </div>
+  </div>
+
+  <!-- ── MAIN GRID ───────────────────────────── -->
+  <div class="main-grid">
+
+    <!-- LEFT: Form Panel -->
+    <div class="form-panel">
+
+      <!-- Credentials -->
+      <div class="panel-box" id="section-credentials">
+        <div class="panel-head">
+          <div class="panel-head-icon"></div>
+          <span class="panel-head-title">01 / Credentials</span>
+        </div>
+        <div class="panel-body">
+          <div class="form-group">
+            <label>GitHub Username <span class="req">*</span></label>
+            <input type="text" id="username" placeholder="octocat" oninput="update()">
+            <div class="validation-msg" id="v-username"></div>
+          </div>
+          <div class="form-group">
+            <label>Personal Access Token (PAT) <span class="req">*</span> <span class="tip">classic only</span></label>
+            <input type="password" id="token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" oninput="update()">
+            <div class="validation-msg" id="v-token"></div>
+          </div>
+          <div class="info-card" style="margin-top:4px">
+            <span class="info-card-icon">ℹ️</span>
+            <span>PAT requires <code style="color:var(--amber)">read:packages</code> and/or <code style="color:var(--amber)">write:packages</code> scopes. Never commit this to source control.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Repository -->
+      <div class="panel-box" id="section-repo">
+        <div class="panel-head">
+          <div class="panel-head-icon"></div>
+          <span class="panel-head-title">02 / Repository</span>
+        </div>
+        <div class="panel-body">
+          <div class="form-group">
+            <label>Owner (user or org) <span class="req">*</span> <span class="tip">lowercase only</span></label>
+            <input type="text" id="owner" placeholder="my-org" oninput="update()">
+            <div class="validation-msg" id="v-owner"></div>
+          </div>
+
+          <div style="margin-bottom:6px;">
+            <label>Repositories</label>
+          </div>
+          <div class="repo-list" id="repoList"></div>
+          <button class="add-repo-btn" onclick="addRepo()">＋ Add Repository</button>
+
+          <div class="form-group" style="margin-top:16px;">
+            <div class="toggle-row">
+              <span class="toggle-label">Enable SNAPSHOT versions</span>
+              <label class="toggle">
+                <input type="checkbox" id="snapshots" checked onchange="update()">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="toggle-row">
+              <span class="toggle-label">Include Maven Central fallback</span>
+              <label class="toggle">
+                <input type="checkbox" id="mavenCentral" checked onchange="update()">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Package -->
+      <div class="panel-box" id="section-pkg">
+        <div class="panel-head">
+          <div class="panel-head-icon"></div>
+          <span class="panel-head-title">03 / Package (pom.xml)</span>
+        </div>
+        <div class="panel-body">
+          <div class="form-group">
+            <label>Group ID <span class="req">*</span></label>
+            <input type="text" id="groupId" placeholder="com.example" oninput="update()">
+          </div>
+          <div class="form-group">
+            <label>Artifact ID <span class="req">*</span> <span class="tip">lowercase + hyphens</span></label>
+            <input type="text" id="artifactId" placeholder="my-library" oninput="update()">
+            <div class="validation-msg" id="v-artifact"></div>
+          </div>
+          <div class="form-group">
+            <label>Version</label>
+            <input type="text" id="version" placeholder="1.0.0-SNAPSHOT" oninput="update()" value="1.0.0-SNAPSHOT">
+          </div>
+          <div class="form-group">
+            <label>Publish to Repository</label>
+            <select id="distRepo" onchange="update()">
+              <option value="">-- select repository --</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Options -->
+      <div class="panel-box">
+        <div class="panel-head">
+          <div class="panel-head-icon"></div>
+          <span class="panel-head-title">04 / Options</span>
+        </div>
+        <div class="panel-body">
+          <label style="margin-bottom:10px;">Generate files</label>
+          <div class="checkbox-group">
+            <label class="checkbox-item checked" onclick="toggleCheck(this, 'gen-settings')">
+              <input type="checkbox" id="gen-settings" checked>
+              <div class="checkmark"></div>
+              <div>
+                <div class="checkbox-text">~/.m2/settings.xml</div>
+              </div>
+            </label>
+            <label class="checkbox-item checked" onclick="toggleCheck(this, 'gen-pom')">
+              <input type="checkbox" id="gen-pom" checked>
+              <div class="checkmark"></div>
+              <div>
+                <div class="checkbox-text">pom.xml (distributionManagement)</div>
+              </div>
+            </label>
+            <label class="checkbox-item checked" onclick="toggleCheck(this, 'gen-dep')">
+              <input type="checkbox" id="gen-dep" checked>
+              <div class="checkmark"></div>
+              <div>
+                <div class="checkbox-text">pom.xml (dependency block)</div>
+              </div>
+            </label>
+            <label class="checkbox-item checked" onclick="toggleCheck(this, 'gen-cicd')">
+              <input type="checkbox" id="gen-cicd" checked>
+              <div class="checkmark"></div>
+              <div>
+                <div class="checkbox-text">GitHub Actions workflow</div>
+              </div>
+            </label>
+          </div>
+        </div>
+        <div class="bottom-bar">
+          <button class="btn-primary" onclick="regenerate()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Regenerate
+          </button>
+          <button class="btn-secondary" onclick="copyAll()">⬇ Export All</button>
+          <span class="status-dot" id="statusDot" style="margin-left:auto;">Live</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Output Panel -->
+    <div class="output-col" id="outputCol">
+
+      <!-- settings.xml -->
+      <div class="output-card" id="card-settings">
+        <div class="output-header">
+          <div class="file-tab xml active">~/.m2/settings.xml</div>
+          <div class="output-actions">
+            <button class="action-btn" onclick="copyCode('settings-code')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+            <button class="action-btn" onclick="downloadFile('settings-code', 'settings.xml')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download
+            </button>
+          </div>
+        </div>
+        <div class="with-lines">
+          <div class="line-nums" id="settings-lines"></div>
+          <div class="code-block" id="settings-code"></div>
+        </div>
+        <div class="meta-bar">
+          <span><span class="meta-badge">XML</span></span>
+          <span id="settings-meta">—</span>
+        </div>
+      </div>
+
+      <!-- pom.xml distribution -->
+      <div class="output-card" id="card-pom">
+        <div class="output-header">
+          <div class="file-tab xml active">pom.xml — Distribution</div>
+          <div class="output-actions">
+            <button class="action-btn" onclick="copyCode('pom-code')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+            <button class="action-btn" onclick="downloadFile('pom-code', 'pom-distribution.xml')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download
+            </button>
+          </div>
+        </div>
+        <div class="with-lines">
+          <div class="line-nums" id="pom-lines"></div>
+          <div class="code-block" id="pom-code"></div>
+        </div>
+        <div class="meta-bar">
+          <span><span class="meta-badge">XML</span></span>
+          <span id="pom-meta">—</span>
+        </div>
+      </div>
+
+      <!-- pom.xml dependency -->
+      <div class="output-card" id="card-dep">
+        <div class="output-header">
+          <div class="file-tab xml active">pom.xml — Dependency</div>
+          <div class="output-actions">
+            <button class="action-btn" onclick="copyCode('dep-code')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+          </div>
+        </div>
+        <div class="with-lines">
+          <div class="line-nums" id="dep-lines"></div>
+          <div class="code-block" id="dep-code"></div>
+        </div>
+      </div>
+
+      <!-- GitHub Actions workflow -->
+      <div class="output-card" id="card-cicd">
+        <div class="output-header">
+          <div class="file-tab sh active">.github/workflows/publish.yml</div>
+          <div class="output-actions">
+            <button class="action-btn" onclick="copyCode('cicd-code')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+            <button class="action-btn" onclick="downloadFile('cicd-code', 'publish.yml')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download
+            </button>
+          </div>
+        </div>
+        <div class="with-lines">
+          <div class="line-nums" id="cicd-lines"></div>
+          <div class="code-block" id="cicd-code"></div>
+        </div>
+        <div class="meta-bar">
+          <span><span class="meta-badge">YAML</span></span>
+          <span id="cicd-meta">—</span>
+        </div>
+      </div>
+
+      <!-- Maven Cheatsheet -->
+      <div class="output-card">
+        <div class="output-header">
+          <div class="file-tab active" style="border-left: 3px solid var(--amber); padding-left:14px;">⚡ Maven Command Cheatsheet</div>
+        </div>
+        <div class="cheat-grid">
+          <div class="cheat-item">
+            <div class="cheat-cmd">mvn deploy</div>
+            <div class="cheat-desc">Publish package to GitHub Packages</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-cmd">mvn install</div>
+            <div class="cheat-desc">Download & install dependencies</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-cmd">mvn package</div>
+            <div class="cheat-desc">Build JAR without deploying</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-cmd">mvn versions:display-dependency-updates</div>
+            <div class="cheat-desc">Check for dependency updates</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-cmd">mvn dependency:list</div>
+            <div class="cheat-desc">List all resolved dependencies</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-cmd">mvn clean deploy -DskipTests</div>
+            <div class="cheat-desc">Deploy, skipping test execution</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-cmd">mvn help:effective-settings</div>
+            <div class="cheat-desc">Show resolved settings.xml config</div>
+          </div>
+          <div class="cheat-item">
+            <div class="cheat-cmd">mvn dependency:resolve -Dclassifier=sources</div>
+            <div class="cheat-desc">Download source JARs</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ──────────────────────────────────── -->
+<div id="toast" style="
+  position:fixed; bottom:24px; right:24px;
+  background:var(--bg3); border:1px solid var(--border2);
+  border-radius:4px; padding:10px 18px;
+  font-family:var(--font-mono); font-size:12px; color:var(--text);
+  box-shadow:0 4px 20px rgba(0,0,0,0.4);
+  transform:translateY(20px); opacity:0;
+  transition:all 0.25s; pointer-events:none; z-index:1000;
+"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let repos = [{ name: '', id: 'github' }];
+
+// ═══════════════════════════════════════════════
+// REPO MANAGEMENT
+// ═══════════════════════════════════════════════
+function addRepo() {
+  repos.push({ name: '', id: 'github' + (repos.length + 1) });
+  renderRepos();
+  update();
+}
+
+function removeRepo(idx) {
+  if (repos.length === 1) return;
+  repos.splice(idx, 1);
+  renderRepos();
+  update();
+}
+
+function renderRepos() {
+  const list = document.getElementById('repoList');
+  list.innerHTML = repos.map((r, i) => `
+    <div class="repo-entry">
+      <div>
+        ${i===0 ? '<label>Repository Name</label>' : '<label style="visibility:hidden">_</label>'}
+        <input type="text" value="${r.name}" placeholder="my-repository"
+          oninput="repos[${i}].name=this.value; updateDistroSelect(); update()">
+      </div>
+      <div>
+        ${i===0 ? '<label>Server ID</label>' : '<label style="visibility:hidden">_</label>'}
+        <input type="text" value="${r.id}" placeholder="github"
+          oninput="repos[${i}].id=this.value; update()">
+      </div>
+      <button class="btn-icon" onclick="removeRepo(${i})" title="Remove" style="${repos.length===1?'opacity:0.3;pointer-events:none':''}">✕</button>
+    </div>
+  `).join('');
+  updateDistroSelect();
+}
+
+function updateDistroSelect() {
+  const sel = document.getElementById('distRepo');
+  const cur = sel.value;
+  const owner = document.getElementById('owner').value.trim().toLowerCase() || 'OWNER';
+  sel.innerHTML = '<option value="">-- select repository --</option>' +
+    repos.map(r => `<option value="${r.name}|${r.id}" ${cur===r.name+'|'+r.id?'selected':''}>${r.name||'(unnamed)'} [id: ${r.id}]</option>`).join('');
+}
+
+// ═══════════════════════════════════════════════
+// CHECKBOX TOGGLE
+// ═══════════════════════════════════════════════
+function toggleCheck(label, id) {
+  const cb = document.getElementById(id);
+  cb.checked = !cb.checked;
+  label.classList.toggle('checked', cb.checked);
+  updateVisibility();
+}
+
+function updateVisibility() {
+  document.getElementById('card-settings').style.display =
+    document.getElementById('gen-settings').checked ? '' : 'none';
+  document.getElementById('card-pom').style.display =
+    document.getElementById('gen-pom').checked ? '' : 'none';
+  document.getElementById('card-dep').style.display =
+    document.getElementById('gen-dep').checked ? '' : 'none';
+  document.getElementById('card-cicd').style.display =
+    document.getElementById('gen-cicd').checked ? '' : 'none';
+}
+
+// ═══════════════════════════════════════════════
+// XML SYNTAX HIGHLIGHTER
+// ═══════════════════════════════════════════════
+function highlight(raw) {
+  return raw
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    // Comments
+    .replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="xml-comment">$1</span>')
+    // Tags
+    .replace(/(&lt;\/?)([\w:.-]+)/g, '<span class="xml-tag">$1$2</span>')
+    // Attributes
+    .replace(/([\w:-]+)(=)(&quot;[^&]*&quot;|"[^"]*")/g,
+      '<span class="xml-attr">$1</span>$2<span class="xml-val">$3</span>')
+    // PLACEHOLDER values
+    .replace(/\b(OWNER|REPOSITORY|USERNAME|TOKEN|YOUR_ARTIFACT_ID|YOUR_GROUP_ID)\b/g,
+      '<span class="xml-placeholder">$1</span>');
+}
+
+function highlightYaml(raw) {
+  return raw
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/(#.*)/g, '<span class="xml-comment">$1</span>')
+    .replace(/^(\s*)([\w-]+)(:)/gm, '$1<span class="xml-attr">$2</span>$3')
+    .replace(/\$\{\{.*?\}\}/g, m => `<span class="xml-highlight">${m}</span>`);
+}
+
+function setCode(id, linesId, raw, isYaml) {
+  const el = document.getElementById(id);
+  const linesEl = document.getElementById(linesId);
+  if (!el) return;
+  el.dataset.raw = raw;
+  el.innerHTML = isYaml ? highlightYaml(raw) : highlight(raw);
+  const n = raw.split('\n').length;
+  linesEl.textContent = Array.from({length:n},(_,i)=>i+1).join('\n');
+  const metaId = id.split('-')[0] + '-meta';
+  const metaEl = document.getElementById(metaId);
+  if (metaEl) metaEl.textContent = `${n} lines · ${raw.length} chars`;
+  el.parentElement.parentElement.classList.add('flash');
+  setTimeout(() => el.parentElement.parentElement.classList.remove('flash'), 400);
+}
+
+// ═══════════════════════════════════════════════
+// GENERATORS
+// ═══════════════════════════════════════════════
+function val(id) { return document.getElementById(id)?.value?.trim() || ''; }
+function checked(id) { return document.getElementById(id)?.checked; }
+
+function generateSettings() {
+  const username = val('username') || 'USERNAME';
+  const token = val('token') || 'TOKEN';
+  const owner = (val('owner') || 'OWNER').toLowerCase();
+  const snapshots = checked('snapshots');
+  const includeCentral = checked('mavenCentral');
+
+  const repoBlocks = repos.map(r => {
+    const repoName = r.name || 'REPOSITORY';
+    const repoId = r.id || 'github';
+    return `        <repository>
+          <id>${repoId}</id>
+          <url>https://maven.pkg.github.com/${owner}/${repoName}</url>${snapshots ? `
+          <snapshots>
+            <enabled>true</enabled>
+          </snapshots>` : ''}
+        </repository>`;
+  }).join('\n');
+
+  const centralBlock = includeCentral ? `        <repository>
+          <id>central</id>
+          <url>https://repo.maven.apache.org/maven2</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+` : '';
+
+  const serverBlocks = repos.map(r => {
+    const repoId = r.id || 'github';
+    return `    <server>
+      <id>${repoId}</id>
+      <username>${username}</username>
+      <password>${token}</password>
+    </server>`;
+  }).join('\n');
+
+  return `<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                      http://maven.apache.org/xsd/settings-1.0.0.xsd">
+
+  <activeProfiles>
+    <activeProfile>github</activeProfile>
+  </activeProfiles>
+
+  <profiles>
+    <profile>
+      <id>github</id>
+      <repositories>
+${centralBlock}${repoBlocks}
+      </repositories>
+    </profile>
+  </profiles>
+
+  <servers>
+${serverBlocks}
+  </servers>
+
+</settings>`;
+}
+
+function generatePom() {
+  const owner = (val('owner') || 'OWNER').toLowerCase();
+  const groupId = val('groupId') || 'com.example';
+  const artifactId = val('artifactId') || 'my-library';
+  const version = val('version') || '1.0.0-SNAPSHOT';
+  const distVal = val('distRepo');
+  let distRepo = repos[0];
+  if (distVal) {
+    const [rName, rId] = distVal.split('|');
+    distRepo = repos.find(r => r.name === rName && r.id === rId) || repos[0];
+  }
+  const repoId = distRepo?.id || 'github';
+  const repoName = distRepo?.name || 'REPOSITORY';
+  const repoLabel = `GitHub ${owner} Apache Maven Packages`;
+
+  return `<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                      https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>${groupId}</groupId>
+  <artifactId>${artifactId}</artifactId>
+  <version>${version}</version>
+  <packaging>jar</packaging>
+
+  <!-- GitHub Packages: publish destination -->
+  <distributionManagement>
+    <repository>
+      <id>${repoId}</id>
+      <name>${repoLabel}</name>
+      <url>https://maven.pkg.github.com/${owner}/${repoName}</url>
+    </repository>
+    <snapshotRepository>
+      <id>${repoId}</id>
+      <name>${repoLabel} Snapshots</name>
+      <url>https://maven.pkg.github.com/${owner}/${repoName}</url>
+    </snapshotRepository>
+  </distributionManagement>
+
+</project>`;
+}
+
+function generateDependency() {
+  const groupId = val('groupId') || 'com.example';
+  const artifactId = val('artifactId') || 'my-library';
+  const version = val('version') || '1.0.0-SNAPSHOT';
+  const owner = (val('owner') || 'OWNER').toLowerCase();
+  const snapshots = checked('snapshots');
+  const includeCentral = checked('mavenCentral');
+
+  const repoBlocks = repos.map(r => {
+    const repoName = r.name || 'REPOSITORY';
+    const repoId = r.id || 'github';
+    return `    <!-- GitHub Packages: ${repoName} -->
+    <repository>
+      <id>${repoId}</id>
+      <url>https://maven.pkg.github.com/${owner}/${repoName}</url>${snapshots ? `
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>` : ''}
+    </repository>`;
+  }).join('\n');
+
+  const centralRepo = includeCentral ? `
+    <repository>
+      <id>central</id>
+      <url>https://repo.maven.apache.org/maven2</url>
+    </repository>` : '';
+
+  return `<!-- Add to your consuming project's pom.xml -->
+
+<repositories>${centralRepo}
+${repoBlocks}
+</repositories>
+
+<dependencies>
+  <dependency>
+    <groupId>${groupId}</groupId>
+    <artifactId>${artifactId}</artifactId>
+    <version>${version}</version>
+  </dependency>
+</dependencies>`;
+}
+
+function generateCICD() {
+  const owner = (val('owner') || 'OWNER').toLowerCase();
+  const groupId = val('groupId') || 'com.example';
+  const artifactId = val('artifactId') || 'my-library';
+
+  return `# .github/workflows/publish.yml
+# Publishes to GitHub Packages on every push to main
+# and on release creation.
+
+name: Publish Maven Package
+
+on:
+  push:
+    branches: [ main ]
+  release:
+    types: [ created ]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          # Auto-generates settings.xml with GITHUB_TOKEN
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: \${{ runner.os }}-maven-\${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            \${{ runner.os }}-maven-
+
+      - name: Build & publish to GitHub Packages
+        run: mvn --batch-mode deploy -DskipTests
+        env:
+          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+
+  # Optional: run tests before publishing
+  test:
+    runs-on: ubuntu-latest
+    needs: []  # runs in parallel
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Run tests
+        run: mvn --batch-mode test`;
+}
+
+// ═══════════════════════════════════════════════
+// UPDATE
+// ═══════════════════════════════════════════════
+let debounceTimer;
+function update() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(_update, 80);
+}
+
+function _update() {
+  validate();
+  updateDistroSelect();
+  if (checked('gen-settings')) setCode('settings-code', 'settings-lines', generateSettings(), false);
+  if (checked('gen-pom'))      setCode('pom-code', 'pom-lines', generatePom(), false);
+  if (checked('gen-dep'))      setCode('dep-code', 'dep-lines', generateDependency(), false);
+  if (checked('gen-cicd'))     setCode('cicd-code', 'cicd-lines', generateCICD(), true);
+  updateStepIndicators();
+}
+
+function regenerate() {
+  _update();
+  toast('✓ Config regenerated', true);
+}
+
+// ═══════════════════════════════════════════════
+// VALIDATION
+// ═══════════════════════════════════════════════
+function validate() {
+  const username = val('username');
+  const token = val('token');
+  const owner = val('owner');
+  const artifactId = val('artifactId');
+
+  setValidation('v-username', username,
+    username.length > 0 ? '✓ Valid username' : '',
+    '', username.includes(' ') ? '⚠ Username cannot contain spaces' : '');
+
+  const tokenOk = token.startsWith('ghp_') || token.startsWith('github_pat_') || token === '';
+  setValidation('v-token', token,
+    tokenOk && token ? '✓ Token format looks valid' : '',
+    '',
+    token && !tokenOk ? '⚠ Should start with ghp_ or github_pat_' : '');
+
+  const ownerOk = !owner || owner === owner.toLowerCase();
+  setValidation('v-owner', owner,
+    ownerOk && owner ? '✓ Lowercase owner' : '',
+    '',
+    !ownerOk ? '⚠ Must be lowercase — GitHub Packages requirement' : '');
+
+  const artifactOk = !artifactId || /^[a-z0-9-]+$/.test(artifactId);
+  setValidation('v-artifact', artifactId,
+    artifactOk && artifactId ? '✓ Valid artifact ID' : '',
+    '',
+    !artifactOk ? '⚠ Must be lowercase letters, digits, and hyphens only' : '');
+}
+
+function setValidation(id, val, okMsg, warnMsg, errMsg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (errMsg) {
+    el.textContent = errMsg;
+    el.className = 'validation-msg show err';
+  } else if (okMsg && val) {
+    el.textContent = okMsg;
+    el.className = 'validation-msg show ok';
+  } else {
+    el.className = 'validation-msg';
+  }
+}
+
+// ═══════════════════════════════════════════════
+// STEP INDICATORS
+// ═══════════════════════════════════════════════
+function updateStepIndicators() {
+  const steps = document.querySelectorAll('.step-indicator');
+  const ok = [
+    val('username') && val('token'),
+    val('owner') && repos.some(r => r.name),
+    val('groupId') && val('artifactId'),
+    true
+  ];
+  steps.forEach((s, i) => {
+    s.classList.remove('active', 'done');
+    if (ok[i]) s.classList.add('done');
+    else s.classList.add('active');
+  });
+  // Keep first incomplete active
+  for (let i = 0; i < steps.length; i++) {
+    if (!ok[i]) { steps[i].classList.remove('done'); steps[i].classList.add('active'); break; }
+  }
+}
+
+// ═══════════════════════════════════════════════
+// COPY / DOWNLOAD
+// ═══════════════════════════════════════════════
+function copyCode(id) {
+  const el = document.getElementById(id);
+  const raw = el.dataset.raw || el.innerText;
+  navigator.clipboard?.writeText(raw).then(() => toast('✓ Copied to clipboard'))
+    .catch(() => { toast('✓ Copied'); });
+  const btn = el.closest('.output-card').querySelector('.action-btn');
+  if (btn) { btn.classList.add('success'); setTimeout(() => btn.classList.remove('success'), 1500); }
+}
+
+function downloadFile(id, filename) {
+  const el = document.getElementById(id);
+  const raw = el.dataset.raw || el.innerText;
+  const blob = new Blob([raw], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  toast(`⬇ Downloaded ${filename}`);
+}
+
+function copyAll() {
+  const parts = [];
+  ['settings-code','pom-code','dep-code','cicd-code'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.dataset.raw) parts.push(`# === ${id} ===\n` + el.dataset.raw);
+  });
+  navigator.clipboard?.writeText(parts.join('\n\n')).then(() => toast('✓ All configs copied'));
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.opacity = '1';
+  el.style.transform = 'translateY(0)';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(20px)';
+  }, 2200);
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+renderRepos();
+update();
+updateVisibility();
+</script>
+</body>
+</html>
