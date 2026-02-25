@@ -1,0 +1,1 @@
+# Maven-GitHub-Packages-Config-Generator
